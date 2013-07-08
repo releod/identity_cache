@@ -258,6 +258,7 @@ module IdentityCache
           end
 
           def #{options[:prepopulate_method_name]}(records)
+            IdentityCache.prepare_records_for_storage(records)
             @#{options[:records_variable_name]} = records
           end
         CODE

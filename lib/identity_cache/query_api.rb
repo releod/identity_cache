@@ -58,7 +58,7 @@ module IdentityCache
             objects_by_key = IdentityCache.fetch_multi(*cache_keys) do |unresolved_keys|
               ids = unresolved_keys.map {|key| key_to_id_map[key] }
               records = find_batch(ids, options)
-              records.compact.each(&:populate_association_caches)
+              IdentityCache.prepare_records_for_storage(records.compact)
               records
             end
 
@@ -93,7 +93,7 @@ module IdentityCache
 
       def resolve_cache_miss(id)
         self.find_by_id(id, :include => cache_fetch_includes).tap do |object|
-          object.try(:populate_association_caches)
+          IdentityCache.prepare_records_for_storage([object])
         end
       end
 
@@ -236,7 +236,7 @@ module IdentityCache
         reflection = options[:embed] && self.class.reflect_on_association(cached_association)
         if reflection && reflection.klass.respond_to?(:cached_has_manys)
           child_objects = Array.wrap(send(options[:cached_accessor_name]))
-          child_objects.each(&:populate_association_caches)
+          IdentityCache.prepare_records_for_storage(child_objects)
         end
       end
     end
@@ -258,6 +258,11 @@ module IdentityCache
       return value unless value.nil?
 
       loaded_association = send(association_name)
+      if self.class.reflect_on_association(association_name).collection?
+        IdentityCache.prepare_records_for_storage(loaded_association.to_a)
+      else
+        IdentityCache.prepare_records_for_storage([loaded_association])
+      end
 
       instance_variable_set(ivar_full_name, IdentityCache.map_cached_nil_for(loaded_association))
     end

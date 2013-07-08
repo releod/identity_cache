@@ -127,5 +127,13 @@ module IdentityCache
     def memcache_hash(key) #:nodoc:
       CityHash.hash64(key)
     end
+
+    def prepare_records_for_storage(records)
+      records.compact.each do |record|
+        record.readonly!
+        record.populate_association_caches if record.respond_to?(:populate_association_caches)
+        record.clear_association_cache
+      end
+    end
   end
 end
